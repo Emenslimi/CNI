@@ -1,0 +1,168 @@
+{% extends 'layout.html' %}
+
+{% block title %}لوحة القيادة - المركز الوطني للإعلامية{% endblock %}
+
+{% block content %}
+<!-- Header Section -->
+<div class="header-wrapper">
+    <div class="header-title">
+        <h1>لوحة قيادة إدارة التدريب</h1>
+        <p>أهلاً بك في نظام إدارة الدورات التكوينية والمكونين الخاص بالمركز الوطني للإعلامية</p>
+    </div>
+    <div class="header-actions">
+        <span class="badge badge-info" style="padding: 8px 16px; font-size: 0.9rem;">
+            <i class="fa-regular fa-calendar-check" style="margin-left: 8px;"></i>
+            {{ today }}
+        </span>
+    </div>
+</div>
+
+<!-- Statistics Cards Grid -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-info">
+            <span>إجمالي الدورات التكوينية</span>
+            <h2>{{ total_cycles }}</h2>
+        </div>
+        <div class="stat-icon">
+            <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card success">
+        <div class="stat-info">
+            <span>إجمالي المكوّنين</span>
+            <h2>{{ total_formateurs }}</h2>
+        </div>
+        <div class="stat-icon">
+            <i class="fa-solid fa-users"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card warning">
+        <div class="stat-info">
+            <span>القاعات المستعملة حالياً</span>
+            <h2>{{ active_rooms }}</h2>
+        </div>
+        <div class="stat-icon">
+            <i class="fa-solid fa-door-open"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card danger">
+        <div class="stat-info">
+            <span>الدورات النشطة / القادمة</span>
+            <h2>{{ active_cycles }}</h2>
+        </div>
+        <div class="stat-icon">
+            <i class="fa-solid fa-clock"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Dashboard Layout Rows -->
+<div class="dashboard-row">
+    <!-- Column 1: Recent Training Cycles -->
+    <div class="glass-container">
+        <div class="section-title">
+            <h3>
+                <i class="fa-solid fa-circle-play"></i>
+                أحدث الدورات التكوينية المضافة
+            </h3>
+            <a href="{{ url_for('list_cycles') }}" class="btn btn-secondary btn-sm">عرض الكل</a>
+        </div>
+        
+        <div class="table-responsive">
+            {% if recent_cycles %}
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>رقم العملية</th>
+                        <th>الدورة التكوينية</th>
+                        <th>تاريخ البداية</th>
+                        <th>تاريخ النهاية</th>
+                        <th>القاعة</th>
+                        <th>الحالة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cycle in recent_cycles %}
+                    <tr>
+                        <td><strong>{{ cycle.num_act }}</strong></td>
+                        <td>{{ cycle.theme }}</td>
+                        <td>{{ cycle.date_deb }}</td>
+                        <td>{{ cycle.date_fin }}</td>
+                        <td>قاعة {{ cycle.num_salle }}</td>
+                        <td>
+                            {% if today < cycle.date_deb|string %}
+                                <span class="badge badge-info">قادمة</span>
+                            {% elif today > cycle.date_fin|string %}
+                                <span class="badge badge-danger">منتهية</span>
+                            {% else %}
+                                <span class="badge badge-success">مستمرة</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else: %}
+            <div class="empty-state">
+                <i class="fa-regular fa-folder-open"></i>
+                <p>لا توجد دورات تكوينية مسجلة حالياً.</p>
+                <a href="{{ url_for('list_cycles', action='new') }}" class="btn btn-primary btn-sm">إضافة دورة جديدة</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Column 2: Recent Trainers & Quick Actions -->
+    <div class="glass-container">
+        <div class="section-title">
+            <h3>
+                <i class="fa-solid fa-chalkboard-user"></i>
+                قائمة المكوّنين الجدد
+            </h3>
+        </div>
+        
+        <div class="recent-trainers-list" style="margin-bottom: 24px;">
+            {% if recent_formateurs %}
+                <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px;">
+                    {% for formateur in recent_formateurs %}
+                    <li style="display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: var(--radius-sm); background-color: var(--bg-primary);">
+                        <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.9rem;">
+                            {{ formateur.nom_prenom[0] }}
+                        </div>
+                        <div style="flex-grow: 1;">
+                            <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">
+                                {{ formateur.nom_prenom }}
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                {{ formateur.specialite }}
+                            </div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p style="text-align: center; color: var(--text-secondary); font-size: 0.9rem; padding: 20px 0;">لا يوجد مكونون مسجلون.</p>
+            {% endif %}
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="quick-actions" style="border-top: 1px solid var(--border-color); padding-top: 20px;">
+            <h4 style="margin-bottom: 12px; font-size: 0.95rem; font-weight: 700;">عمليات سريعة</h4>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <a href="{{ url_for('list_cycles', action='new') }}" class="btn btn-primary" style="width: 100%; font-size: 0.85rem; padding: 10px 16px;">
+                    <i class="fa-solid fa-plus-circle"></i>
+                    إضافة دورة تكوينية جديدة
+                </a>
+                <a href="{{ url_for('list_formateurs', action='new') }}" class="btn btn-secondary" style="width: 100%; font-size: 0.85rem; padding: 10px 16px;">
+                    <i class="fa-solid fa-user-plus"></i>
+                    إضافة مكوّن جديد
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

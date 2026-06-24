@@ -1,0 +1,263 @@
+{% extends 'layout.html' %}
+
+{% block title %}إدارة الدورات التكوينية - المركز الوطني للإعلامية{% endblock %}
+
+{% block content %}
+<div class="header-wrapper">
+    <div class="header-title">
+        <h1>إدارة الدورات التكوينية</h1>
+        <p>إضافة، تعديل، حذف، والبحث عن الدورات التكوينية المسجلة</p>
+    </div>
+    <div class="header-actions">
+        <span class="badge badge-primary" style="padding: 8px 16px; font-size: 0.9rem;">
+            <i class="fa-solid fa-graduation-cap" style="margin-left: 8px;"></i>
+            عدد الدورات: {{ total_cycles }}
+        </span>
+    </div>
+</div>
+
+<div class="dashboard-row" style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; width: 100%; box-sizing: border-box;">
+    
+    <div class="glass-container" style="min-width: 0;">
+        <div class="section-title">
+            <h3>
+                <i class="fa-solid fa-calendar-check"></i>
+                قائمة الدورات التكوينية
+            </h3>
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" placeholder="بحث برقم العملية، الدورة، المكوّن...">
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            {% if cycles %}
+            <table class="custom-table" id="cyclesTable">
+                <thead>
+                    <tr>
+                        <th>رقم العملية</th>
+                        <th>الدورة التكوينية</th>
+                        <th>تاريخ البداية</th>
+                        <th>تاريخ النهاية</th>
+                        <th>المكوّنون</th>
+                        <th>القاعة</th>
+                        <th>الحالة</th>
+                        <th style="width: 160px; text-align: center;">إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in cycles %}
+                    <tr>
+                        <td><strong>{{ row.num_act }}</strong></td>
+                        <td>{{ row.theme }}</td>
+                        <td>{{ row.date_deb }}</td>
+                        <td>{{ row.date_fin }}</td>
+                        <td style="font-size: 0.85rem; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" 
+                            title="{% set trainers = [] %}{% if row.for1 and row.for1 != 'إضافة مكون' %}{% set _ = trainers.append(row.for1) %}{% endif %}{% if row.for2 and row.for2 != 'إضافة مكون' %}{% set _ = trainers.append(row.for2) %}{% endif %}{% if row.for3 and row.for3 != 'إضافة مكون' %}{% set _ = trainers.append(row.for3) %}{% endif %}{{ trainers|join(', ') }}">
+                            {% set trainers = [] %}
+                            {% if row.for1 and row.for1 != 'إضافة مكون' and row.for1 != '' %}{% set _ = trainers.append(row.for1) %}{% endif %}
+                            {% if row.for2 and row.for2 != 'إضافة مكون' and row.for2 != '' %}{% set _ = trainers.append(row.for2) %}{% endif %}
+                            {% if row.for3 and row.for3 != 'إضافة مكون' and row.for3 != '' %}{% set _ = trainers.append(row.for3) %}{% endif %}
+                            
+                            {% if trainers %}
+                                {{ trainers|join('، ') }}
+                            {% else %}
+                                <span style="color: var(--text-muted);">غير محدد</span>
+                            {% endif %}
+                        </td>
+                        <td>قاعة {{ row.num_salle }}</td>
+                        <td>
+                            {% if today < row.date_deb|string %}
+                                <span class="badge badge-info">قادمة</span>
+                            {% elif today > row.date_fin|string %}
+                                <span class="badge badge-danger">منتهية</span>
+                            {% else %}
+                                <span class="badge badge-success">مستمرة</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            <div class="actions-cell" style="justify-content: center; gap: 6px;">
+                                <a href="{{ url_for('generate_plan', num_act=row.num_act) }}" class="btn btn-sm btn-info" title="توليد برنامج الذكاء الاصطناعي" style="font-size: 0.75rem; padding: 4px 8px;">
+                                    <i class="fa-solid fa-brain" style="margin-left: 4px;"></i>توليد ذكي
+                                </a>
+                                <a href="{{ url_for('edit_cycle', num_act=row.num_act) }}" class="action-btn edit" title="تعديل">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                                <a href="javascript:void(0)" onclick="confirmDelete('{{ row.num_act|e }}')" class="action-btn delete" title="حذف">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <i class="fa-solid fa-graduation-cap"></i>
+                <p>لا توجد دورات تكوينية مسجلة حالياً.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="glass-container" id="addFormContainer" style="box-sizing: border-box; width: 100%; max-width: 100%; margin-left: 0; padding: 20px; overflow: hidden;">
+        <div class="section-title">
+            <h3>
+                <i class="fa-solid fa-plus-circle"></i>
+                إضافة دورة جديدة
+            </h3>
+        </div>
+        
+        <form name="cycle_form" action="{{ url_for('add_cycle') }}" method="POST" onsubmit="return validateCycleForm()" style="width: 100%; box-sizing: border-box;">
+            <div class="form-group" style="margin-bottom: 15px; width: 100%;">
+                <label for="num_act">رقم العملية <span style="color: var(--danger-color);">*</span></label>
+                <input type="text" id="num_act" name="num_act" placeholder="مثال: ACT-2026-001" required style="width: 100%; box-sizing: border-box; display: block;">
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 15px; width: 100%;">
+                <label for="theme">الدورة التكوينية <span style="color: var(--danger-color);">*</span></label>
+                <input type="text" id="theme" name="theme" placeholder="مثال: تطوير الويب باستخدام PHP" required style="width: 100%; box-sizing: border-box; display: block;">
+            </div>
+            
+            <div class="form-row" style="display: flex; gap: 10px; width: 100%; box-sizing: border-box; margin-bottom: 15px;">
+                <div class="form-group" style="flex: 1; min-width: 0;">
+                    <label for="date_deb" style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">تاريخ البداية <span style="color: var(--danger-color);">*</span></label>
+                    <input type="date" id="date_deb" name="date_deb" required style="width: 100%; box-sizing: border-box; display: block; padding: 8px 10px;">
+                </div>
+                
+                <div class="form-group" style="flex: 1; min-width: 0;">
+                    <label for="date_fin" style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">تاريخ النهاية <span style="color: var(--danger-color);">*</span></label>
+                    <input type="date" id="date_fin" name="date_fin" required style="width: 100%; box-sizing: border-box; display: block; padding: 8px 10px;">
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 15px; width: 100%;">
+                <label for="form_1">مكون عدد 1</label>
+                <select name="form_1" id="form_1" style="width: 100%; box-sizing: border-box; display: block;">
+                    <option value="">إختر مكون</option>
+                    {% for f in formateurs %}
+                        <option value="{{ f }}">{{ f }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 15px; width: 100%;">
+                <label for="form_2">مكون عدد 2</label>
+                <select name="form_2" id="form_2" style="width: 100%; box-sizing: border-box; display: block;">
+                    <option value="">إختر مكون</option>
+                    {% for f in formateurs %}
+                        <option value="{{ f }}">{{ f }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 15px; width: 100%;">
+                <label for="form_3">مكون عدد 3</label>
+                <select name="form_3" id="form_3" style="width: 100%; box-sizing: border-box; display: block;">
+                    <option value="">إختر مكون</option>
+                    {% for f in formateurs %}
+                        <option value="{{ f }}">{{ f }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 20px; width: 100%;">
+                <label for="num_salle">رقم القاعة <span style="color: var(--danger-color);">*</span></label>
+                <select name="num_salle" id="num_salle" required style="width: 100%; box-sizing: border-box; display: block;">
+                    <option value="">إختر القاعة</option>
+                    {% for i in range(1, 11) %}
+                        <option value="{{ i }}">قاعة التدريب {{ i }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            {% if not formateurs %}
+            <div style="background-color: var(--warning-bg); color: var(--warning-color); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 16px; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; box-sizing: border-box;">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>تنبيه: لا يوجد أي مكون مسجل. <a href="{{ url_for('list_formateurs', action='new') }}" style="text-decoration: underline; font-weight: bold; color: inherit;">سجل مكوناً هنا أولاً</a>.</span>
+            </div>
+            {% endif %}
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%; box-sizing: border-box; display: block;">
+                <i class="fa-solid fa-calendar-plus"></i>
+                تسجيل الدورة
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+// Recherche dynamique en JavaScript
+const searchInput = document.getElementById('searchInput');
+const table = document.getElementById('cyclesTable');
+
+if (searchInput && table) {
+    searchInput.addEventListener('keyup', function() {
+        const filter = searchInput.value.toLowerCase().trim();
+        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+        
+        for (let i = 0; i < rows.length; i++) {
+            let match = false;
+            const cells = rows[i].getElementsByTagName('td');
+            
+            for (let j = 0; j < cells.length - 1; j++) { 
+                if (cells[j]) {
+                    const textValue = cells[j].textContent || cells[j].innerText;
+                    if (textValue.toLowerCase().indexOf(filter) > -1) {
+                        match = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (match) {
+                rows[i].style.display = '';
+            } else {
+                rows[i].style.display = 'none';
+            }
+        }
+    });
+}
+
+// Validation des dates
+function validateCycleForm() {
+    const numAct = document.getElementById('num_act').value.trim();
+    const theme = document.getElementById('theme').value.trim();
+    const dateDeb = document.getElementById('date_deb').value;
+    const dateFin = document.getElementById('date_fin').value;
+    const numSalle = document.getElementById('num_salle').value;
+    
+    if (numAct === '' || theme === '' || dateDeb === '' || dateFin === '' || numSalle === '') {
+        showToast('خطأ في الإدخال', 'يرجى ملء كافة الحقول الإجبارية المعلمة بنجمة (*)', 'danger');
+        return false;
+    }
+    
+    if (new Date(dateFin) < new Date(dateDeb)) {
+        showToast('خطأ في التاريخ', 'تاريخ نهاية الدورة لا يمكن أن يكون قبل تاريخ بدايتها.', 'danger');
+        return false;
+    }
+    
+    return true;
+}
+
+// Confirmation de suppression
+function confirmDelete(numAct) {
+    if (confirm(`هل أنت متأكد من رغبتك في حذف الدورة التكوينية ذات الرقم "${numAct}"؟`)) {
+        window.location.href = `/cycles/delete/${encodeURIComponent(numAct)}`;
+    }
+}
+
+// Gestion du scroll automatique
+window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('action') === 'new') {
+        const formContainer = document.getElementById('addFormContainer');
+        if (formContainer) {
+            formContainer.scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('num_act').focus();
+        }
+    }
+});
+</script>
+{% endblock %}

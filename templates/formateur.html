@@ -1,0 +1,180 @@
+{% extends 'layout.html' %}
+
+{% block title %}إدارة المكوّنين - المركز الوطني للإعلامية{% endblock %}
+
+{% block content %}
+<!-- Header Section -->
+<div class="header-wrapper">
+    <div class="header-title">
+        <h1>إدارة المكوّنين</h1>
+        <p>إضافة، تعديل، حذف، والبحث عن المكوّنين في قاعدة البيانات</p>
+    </div>
+    <div class="header-actions">
+        <span class="badge badge-success" style="padding: 8px 16px; font-size: 0.9rem;">
+            <i class="fa-solid fa-users" style="margin-left: 8px;"></i>
+            عدد المكوّنين: {{ total_trainers }}
+        </span>
+    </div>
+</div>
+
+<div class="dashboard-row">
+    <!-- Right Column: Trainers List & Search -->
+    <div class="glass-container">
+        <div class="section-title">
+            <h3>
+                <i class="fa-solid fa-list"></i>
+                قائمة المكوّنين المسجلين
+            </h3>
+            <!-- Search Box -->
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" placeholder="بحث باسم المكون، التخصص...">
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            {% if trainers %}
+            <table class="custom-table" id="trainersTable">
+                <thead>
+                    <tr>
+                        <th>الاسم واللقب</th>
+                        <th>التخصص</th>
+                        <th>الإدارة / القسم</th>
+                        <th>المؤسسة / الشركة</th>
+                        <th style="width: 100px; text-align: center;">إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in trainers %}
+                    <tr>
+                        <td><strong>{{ row.nom_prenom }}</strong></td>
+                        <td><span class="badge badge-info">{{ row.specialite }}</span></td>
+                        <td>{{ row.direction or '' }}</td>
+                        <td>{{ row.entreprise }}</td>
+                        <td style="text-align: center;">
+                            <div class="actions-cell" style="justify-content: center;">
+                                <a href="{{ url_for('edit_formateur', nom_prenom=row.nom_prenom) }}" class="action-btn edit" title="تعديل">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                                <a href="javascript:void(0)" onclick="confirmDelete('{{ row.nom_prenom|e }}')" class="action-btn delete" title="حذف">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <i class="fa-regular fa-user"></i>
+                <p>لا يوجد مكونون مسجلون في قاعدة البيانات حالياً.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Left Column: Add Trainer Form -->
+    <div class="glass-container" id="addFormContainer">
+        <div class="section-title">
+            <h3>
+                <i class="fa-solid fa-user-plus"></i>
+                إضافة مكوّن جديد
+            </h3>
+        </div>
+        
+        <form name="formateur_form" action="{{ url_for('add_formateur') }}" method="POST" onsubmit="return validateForm()">
+            <div class="form-group">
+                <label for="nom_prenom">الاسم واللقب <span style="color: var(--danger-color);">*</span></label>
+                <input type="text" id="nom_prenom" name="nom_prenom" placeholder="مثال: أحمد بن علي" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="specialite">التخصص <span style="color: var(--danger-color);">*</span></label>
+                <input type="text" id="specialite" name="specialite" placeholder="مثال: هندسة البرمجيات، شبكات" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="direction">الإدارة / القسم</label>
+                <input type="text" id="direction" name="direction" placeholder="مثال: إدارة النظم، مركز تطوير">
+            </div>
+            
+            <div class="form-group">
+                <label for="entreprise">المؤسسة / الشركة <span style="color: var(--danger-color);">*</span></label>
+                <input type="text" id="entreprise" name="entreprise" placeholder="مثال: المركز الوطني للإعلامية" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+                <i class="fa-solid fa-floppy-disk"></i>
+                حفظ البيانات
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+// Recherche instantanée en JavaScript
+const searchInput = document.getElementById('searchInput');
+const table = document.getElementById('trainersTable');
+
+if (searchInput && table) {
+    searchInput.addEventListener('keyup', function() {
+        const filter = searchInput.value.toLowerCase().trim();
+        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+        
+        for (let i = 0; i < rows.length; i++) {
+            let match = false;
+            const cells = rows[i].getElementsByTagName('td');
+            
+            for (let j = 0; j < cells.length - 1; j++) { // Exclure les boutons d'actions
+                if (cells[j]) {
+                    const textValue = cells[j].textContent || cells[j].innerText;
+                    if (textValue.toLowerCase().indexOf(filter) > -1) {
+                        match = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (match) {
+                rows[i].style.display = '';
+            } else {
+                rows[i].style.display = 'none';
+            }
+        }
+    });
+}
+
+// Validation du formulaire côté client
+function validateForm() {
+    const nom = document.getElementById('nom_prenom').value.trim();
+    const spec = document.getElementById('specialite').value.trim();
+    const ent = document.getElementById('entreprise').value.trim();
+    
+    if (nom === '' || spec === '' || ent === '') {
+        showToast('خطأ في الإدخال', 'يرجى ملء الحقول الإجبارية المعلمة بنجمة (*)', 'danger');
+        return false;
+    }
+    return true;
+}
+
+// Confirmation de suppression
+function confirmDelete(nomPrenom) {
+    if (confirm(`هل أنت متأكد من رغبتك في حذف المكون "${nomPrenom}"؟\nملاحظة: قد يؤثر هذا على الدورات التكوينية المرتبطة به.`)) {
+        window.location.href = `/formateurs/delete/${encodeURIComponent(nomPrenom)}`;
+    }
+}
+
+// Gestion du scroll automatique si action=new est présente dans les paramètres d'URL
+window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('action') === 'new') {
+        const formContainer = document.getElementById('addFormContainer');
+        if (formContainer) {
+            formContainer.scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('nom_prenom').focus();
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}المركز الوطني للإعلامية{% endblock %}</title>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Custom Style -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toastContainer">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    {% set toast_type = category if category in ['success', 'danger', 'warning'] else 'success' %}
+                    {% set icon_class = 'fa-circle-check' if toast_type == 'success' else ('fa-circle-xmark' if toast_type == 'danger' else 'fa-circle-exclamation') %}
+                    {% set title = 'نجاح العملية' if toast_type == 'success' else ('فشل العملية' if toast_type == 'danger' else 'تنبيه') %}
+                    <div class="toast {{ toast_type }}" style="transform: translateX(0);">
+                        <i class="fa-solid {{ icon_class }} toast-icon"></i>
+                        <div class="toast-content">
+                            <div class="toast-title">{{ title }}</div>
+                            <div class="toast-message">{{ message }}</div>
+                        </div>
+                        <button class="toast-close" onclick="this.parentElement.remove()">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="sidebar-logo">
+                <img src="{{ url_for('static', filename='CNI.jpg') }}" alt="Logo CNI">
+                <h2>المركز الوطني للإعلامية</h2>
+                <span>وحدة التكوين و الرسكلة</span>
+            </div>
+            
+            <ul class="sidebar-menu">
+                <li class="sidebar-menu-item {% if request.path == '/' or request.path == '/dashboard' %}active{% endif %}">
+                    <a href="{{ url_for('dashboard') }}">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <span>لوحة القيادة</span>
+                    </a>
+                </li>
+                <li class="sidebar-menu-item {% if '/cycles' in request.path %}active{% endif %}">
+                    <a href="{{ url_for('list_cycles') }}">
+                        <i class="fa-solid fa-calendar-days"></i>
+                        <span>الدورات التكوينية</span>
+                    </a>
+                </li>
+                <li class="sidebar-menu-item {% if '/formateurs' in request.path %}active{% endif %}">
+                    <a href="{{ url_for('list_formateurs') }}">
+                        <i class="fa-solid fa-chalkboard-user"></i>
+                        <span>المكوّنون</span>
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="sidebar-footer">
+                <button class="theme-toggle-btn" id="themeToggleBtn">
+                    <i class="fa-solid fa-moon" id="themeIcon"></i>
+                    <span id="themeText">الوضع الداكن</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Main Content Area -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+    // Gestion du thème sombre/clair
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const themeIcon = document.getElementById('themeIcon');
+    const themeText = document.getElementById('themeText');
+
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    updateThemeUI(currentTheme);
+
+    themeToggleBtn.addEventListener('click', () => {
+        let theme = document.documentElement.getAttribute('data-theme');
+        let newTheme = theme === 'dark' ? 'light' : 'dark';
+        
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateThemeUI(newTheme);
+    });
+
+    function updateThemeUI(theme) {
+        if (theme === 'dark') {
+            themeIcon.className = 'fa-solid fa-sun';
+            themeText.textContent = 'الوضع المضيء';
+        } else {
+            themeIcon.className = 'fa-solid fa-moon';
+            themeText.textContent = 'الوضع الداكن';
+        }
+    }
+
+    // Gestion automatique de la fermeture des toasts après 5 secondes
+    document.addEventListener('DOMContentLoaded', () => {
+        const toasts = document.querySelectorAll('.toast');
+        toasts.forEach(toast => {
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.4s forwards';
+                setTimeout(() => toast.remove(), 400);
+            }, 5000);
+        });
+    });
+
+    // Fonction JS globale pour injecter un toast à la volée
+    function showToast(title, message, type = 'success') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        let iconClass = 'fa-circle-check';
+        if (type === 'danger') iconClass = 'fa-circle-xmark';
+        if (type === 'warning') iconClass = 'fa-circle-exclamation';
+        
+        toast.innerHTML = `
+            <i class="fa-solid ${iconClass} toast-icon"></i>
+            <div class="toast-content">
+                <div class="toast-title">${title}</div>
+                <div class="toast-message">${message}</div>
+            </div>
+            <button class="toast-close" onclick="this.parentElement.remove()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        `;
+        
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'slideOut 0.4s forwards';
+            setTimeout(() => toast.remove(), 400);
+        }, 5000);
+    }
+    </script>
+</body>
+</html>
