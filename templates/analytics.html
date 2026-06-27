@@ -1,0 +1,291 @@
+{% extends 'layout.html' %}
+{% block title %}الإحصائيات والتحليل - المركز الوطني للإعلامية{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="header-wrapper">
+    <div class="header-title">
+        <h1>الإحصائيات والتحليل</h1>
+        <p>تحليل شامل لأداء الدورات التكوينية والمكوّنين</p>
+    </div>
+    <div class="header-actions">
+        <span class="badge badge-info" style="padding: 8px 16px; font-size: 0.9rem;">
+            <i class="fa-regular fa-calendar-check"></i>
+            {{ today }}
+        </span>
+        <button onclick="generateAIReport()" class="btn btn-ai btn-sm">
+            <i class="fa-solid fa-robot"></i> تقرير ذكي
+        </button>
+    </div>
+</div>
+
+<!-- KPIs Row -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-info">
+            <span>إجمالي الدورات</span>
+            <h2 id="kpi-total">{{ total_cycles }}</h2>
+        </div>
+        <div class="stat-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+    </div>
+    <div class="stat-card success">
+        <div class="stat-info">
+            <span>إجمالي المكوّنين</span>
+            <h2 id="kpi-formateurs">{{ total_formateurs }}</h2>
+        </div>
+        <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+    </div>
+    <div class="stat-card warning">
+        <div class="stat-info">
+            <span>الدورات النشطة حالياً</span>
+            <h2 id="kpi-active">{{ active_cycles }}</h2>
+        </div>
+        <div class="stat-icon"><i class="fa-solid fa-circle-play"></i></div>
+    </div>
+    <div class="stat-card info">
+        <div class="stat-info">
+            <span>أطول دورة</span>
+            <h2 id="kpi-longest" style="font-size: 1.6rem;">
+                {% if longest_cycle %}{{ longest_cycle.duree }} يوم{% else %}—{% endif %}
+            </h2>
+        </div>
+        <div class="stat-icon"><i class="fa-solid fa-hourglass"></i></div>
+    </div>
+</div>
+
+<!-- AI Report Box -->
+<div class="glass-container" id="aiReportBox" style="display:none; border: 1px solid rgba(124,58,237,0.3); background: linear-gradient(135deg, rgba(124,58,237,0.05), rgba(37,99,235,0.03));">
+    <div class="section-title">
+        <h3><i class="fa-solid fa-robot" style="color: var(--ai-color);"></i> التقرير الذكي</h3>
+        <button onclick="document.getElementById('aiReportBox').style.display='none'" class="btn btn-secondary btn-sm">
+            <i class="fa-solid fa-xmark"></i> إغلاق
+        </button>
+    </div>
+    <div id="aiReportContent" style="color: var(--text-primary); line-height: 1.8; white-space: pre-line;"></div>
+</div>
+
+<!-- Charts Grid -->
+<div class="analytics-grid">
+    <div class="glass-container">
+        <div class="section-title">
+            <h3><i class="fa-solid fa-chart-line"></i> الدورات الشهرية (12 شهراً)</h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="monthlyBarChart"></canvas>
+        </div>
+    </div>
+    <div class="glass-container">
+        <div class="section-title">
+            <h3><i class="fa-solid fa-chart-pie"></i> توزيع حسب الحالة</h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="statusDoughnutChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="analytics-grid">
+    <div class="glass-container">
+        <div class="section-title">
+            <h3><i class="fa-solid fa-building"></i> استخدام القاعات</h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="roomBarChart"></canvas>
+        </div>
+    </div>
+    <div class="glass-container">
+        <div class="section-title">
+            <h3><i class="fa-solid fa-trophy"></i> أكثر المكوّنين نشاطاً</h3>
+        </div>
+        <div id="topFormateurs" style="padding-top: 8px;">
+            <div style="text-align: center; color: var(--text-muted); padding: 40px;">
+                <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem;"></i>
+                <p>جارٍ التحميل...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed status breakdown -->
+<div class="glass-container">
+    <div class="section-title">
+        <h3><i class="fa-solid fa-chart-bar"></i> ملخص إحصائي شامل</h3>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;" id="statusBreakdown">
+        <div style="text-align: center; padding: 24px; background: var(--success-bg); border-radius: var(--radius-md); border: 1px solid var(--success-color);">
+            <i class="fa-solid fa-circle-play" style="font-size: 2rem; color: var(--success-color); margin-bottom: 8px; display: block;"></i>
+            <div style="font-size: 2rem; font-weight: 800; color: var(--success-color);" id="stat-active">—</div>
+            <div style="color: var(--text-secondary); font-size: 0.85rem;">دورة مستمرة</div>
+        </div>
+        <div style="text-align: center; padding: 24px; background: var(--info-bg); border-radius: var(--radius-md); border: 1px solid var(--info-color);">
+            <i class="fa-solid fa-clock" style="font-size: 2rem; color: var(--info-color); margin-bottom: 8px; display: block;"></i>
+            <div style="font-size: 2rem; font-weight: 800; color: var(--info-color);" id="stat-upcoming">—</div>
+            <div style="color: var(--text-secondary); font-size: 0.85rem;">دورة قادمة</div>
+        </div>
+        <div style="text-align: center; padding: 24px; background: rgba(107,114,128,0.08); border-radius: var(--radius-md); border: 1px solid var(--text-muted);">
+            <i class="fa-solid fa-check-circle" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 8px; display: block;"></i>
+            <div style="font-size: 2rem; font-weight: 800; color: var(--text-muted);" id="stat-past">—</div>
+            <div style="color: var(--text-secondary); font-size: 0.85rem;">دورة منتهية</div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadAnalyticsCharts() {
+    try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        
+        // Update status breakdown
+        document.getElementById('stat-active').textContent = data.status.active || 0;
+        document.getElementById('stat-upcoming').textContent = data.status.upcoming || 0;
+        document.getElementById('stat-past').textContent = data.status.past || 0;
+        
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+        const textColor = isDark ? '#9ca3af' : '#64748b';
+        
+        // Monthly chart
+        const monthLabels = data.monthly.map(m => {
+            const [y, mo] = m.month.split('-');
+            const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+            return months[parseInt(mo)-1];
+        });
+        new Chart(document.getElementById('monthlyBarChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: monthLabels,
+                datasets: [{
+                    label: 'الدورات',
+                    data: data.monthly.map(m => m.count),
+                    backgroundColor: 'rgba(37, 99, 235, 0.7)',
+                    borderColor: '#2563eb',
+                    borderWidth: 2,
+                    borderRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: gridColor }, ticks: { color: textColor, font: { family: 'Cairo', size: 11 } } },
+                    y: { grid: { color: gridColor }, ticks: { color: textColor, font: { family: 'Cairo' }, stepSize: 1 }, beginAtZero: true }
+                }
+            }
+        });
+        
+        // Status doughnut
+        new Chart(document.getElementById('statusDoughnutChart').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['مستمرة', 'قادمة', 'منتهية'],
+                datasets: [{ 
+                    data: [data.status.active, data.status.upcoming, data.status.past],
+                    backgroundColor: ['#10b981', '#06b6d4', '#6b7280'],
+                    borderWidth: 3,
+                    borderColor: 'transparent',
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                cutout: '60%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: textColor, font: { family: 'Cairo', size: 12 }, padding: 16 } },
+                    tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw}` } }
+                }
+            }
+        });
+        
+        // Room usage
+        new Chart(document.getElementById('roomBarChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: data.room_stats.map(r => r.room),
+                datasets: [{
+                    label: 'عدد الدورات',
+                    data: data.room_stats.map(r => r.count),
+                    backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                    borderColor: '#10b981',
+                    borderWidth: 2,
+                    borderRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: gridColor }, ticks: { color: textColor, font: { family: 'Cairo' }, stepSize: 1 }, beginAtZero: true },
+                    y: { grid: { display: false }, ticks: { color: textColor, font: { family: 'Cairo', size: 11 } } }
+                }
+            }
+        });
+        
+        // Top formateurs
+        const topDiv = document.getElementById('topFormateurs');
+        if (data.top_formateurs.length === 0) {
+            topDiv.innerHTML = '<div class="empty-state"><i class="fa-solid fa-users"></i><p>لا توجد بيانات.</p></div>';
+            return;
+        }
+        const maxCount = Math.max(...data.top_formateurs.map(f => f.count)) || 1;
+        topDiv.innerHTML = data.top_formateurs.map((f, i) => `
+            <div class="top-trainer-item">
+                <div class="trainer-rank ${i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-other'}">${i + 1}</div>
+                <div class="trainer-bar-wrap">
+                    <div class="trainer-bar-label">${f.name}</div>
+                    <div class="trainer-bar-sub">${f.specialite}</div>
+                    <div class="trainer-bar-bg">
+                        <div class="trainer-bar-fill" style="width: ${(f.count / maxCount * 100)}%"></div>
+                    </div>
+                </div>
+                <div class="trainer-count">${f.count}</div>
+            </div>
+        `).join('');
+        
+    } catch(e) {
+        console.error('Analytics load error:', e);
+    }
+}
+
+async function generateAIReport() {
+    const box = document.getElementById('aiReportBox');
+    const content = document.getElementById('aiReportContent');
+    box.style.display = 'block';
+    content.textContent = 'جارٍ توليد التقرير الذكي…';
+    box.scrollIntoView({ behavior: 'smooth' });
+    
+    try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        
+        const prompt = `لديك إحصائيات نظام إدارة التكوين للمركز الوطني للإعلامية:
+- إجمالي الدورات: ${data.status.active + data.status.upcoming + data.status.past}
+- دورات نشطة: ${data.status.active}
+- دورات قادمة: ${data.status.upcoming}
+- دورات منتهية: ${data.status.past}
+- أكثر المكوّنين نشاطاً: ${data.top_formateurs.map(f => f.name + ' (' + f.count + ' دورات)').join(', ')}
+
+اكتب تقريراً تحليلياً موجزاً (10 أسطر) باللغة العربية يتضمن:
+1. تقييم الوضع الراهن
+2. نقاط القوة الملاحظة
+3. توصيات للتحسين`;
+
+        const chatRes = await fetch('/api/ai-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: prompt })
+        });
+        const chatData = await chatRes.json();
+        content.textContent = chatData.reply || 'لم يتمكن الذكاء الاصطناعي من توليد التقرير.';
+    } catch(e) {
+        content.textContent = 'خطأ في توليد التقرير.';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadAnalyticsCharts);
+</script>
+{% endblock %}

@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="نظام إدارة الدورات التكوينية - المركز الوطني للإعلامية">
     <title>{% block title %}المركز الوطني للإعلامية{% endblock %}</title>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <!-- Custom Style -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     {% block head %}{% endblock %}
 </head>
@@ -34,32 +33,79 @@
         {% endwith %}
     </div>
 
+    <!-- Global Delete Confirmation Modal -->
+    <div class="modal-overlay" id="globalModal">
+        <div class="modal-box">
+            <div class="modal-icon">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="modal-title" id="modalTitle">تأكيد الحذف</div>
+            <div class="modal-desc" id="modalDesc">هل أنت متأكد من رغبتك في حذف هذا العنصر؟</div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">
+                    <i class="fa-solid fa-xmark"></i> إلغاء
+                </button>
+                <button class="btn btn-danger" id="modalConfirmBtn">
+                    <i class="fa-solid fa-trash-can"></i> نعم، احذف
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="app-container">
         <!-- Sidebar Navigation -->
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
             <div class="sidebar-logo">
                 <img src="{{ url_for('static', filename='CNI.jpg') }}" alt="Logo CNI">
                 <h2>المركز الوطني للإعلامية</h2>
-                <span>وحدة التكوين و الرسكلة</span>
+                <span>وحدة التكوين والرسكلة</span>
             </div>
             
             <ul class="sidebar-menu">
+                <!-- GESTION -->
+                <div class="sidebar-section-label">الإدارة</div>
                 <li class="sidebar-menu-item {% if request.path == '/' or request.path == '/dashboard' %}active{% endif %}">
                     <a href="{{ url_for('dashboard') }}">
                         <i class="fa-solid fa-chart-pie"></i>
                         <span>لوحة القيادة</span>
                     </a>
                 </li>
-                <li class="sidebar-menu-item {% if '/cycles' in request.path %}active{% endif %}">
+                <li class="sidebar-menu-item {% if '/cycles' in request.path and '/calendar' not in request.path %}active{% endif %}">
                     <a href="{{ url_for('list_cycles') }}">
                         <i class="fa-solid fa-calendar-days"></i>
                         <span>الدورات التكوينية</span>
+                        <span class="sidebar-badge" id="badge-cycles">…</span>
                     </a>
                 </li>
                 <li class="sidebar-menu-item {% if '/formateurs' in request.path %}active{% endif %}">
                     <a href="{{ url_for('list_formateurs') }}">
                         <i class="fa-solid fa-chalkboard-user"></i>
                         <span>المكوّنون</span>
+                        <span class="sidebar-badge" id="badge-formateurs">…</span>
+                    </a>
+                </li>
+
+                <!-- ANALYSE -->
+                <div class="sidebar-section-label">التحليل</div>
+                <li class="sidebar-menu-item {% if '/analytics' in request.path %}active{% endif %}">
+                    <a href="{{ url_for('analytics') }}">
+                        <i class="fa-solid fa-chart-bar"></i>
+                        <span>الإحصائيات والتحليل</span>
+                    </a>
+                </li>
+                <li class="sidebar-menu-item {% if '/calendar' in request.path %}active{% endif %}">
+                    <a href="{{ url_for('calendar_view') }}">
+                        <i class="fa-solid fa-calendar-alt"></i>
+                        <span>التقويم التفاعلي</span>
+                    </a>
+                </li>
+
+                <!-- IA -->
+                <div class="sidebar-section-label">الذكاء الاصطناعي</div>
+                <li class="sidebar-menu-item ai-item">
+                    <a href="javascript:void(0)" onclick="toggleChatbot()">
+                        <i class="fa-solid fa-robot"></i>
+                        <span>المساعد الذكي</span>
                     </a>
                 </li>
             </ul>
@@ -78,8 +124,42 @@
         </main>
     </div>
 
+    <!-- AI Chatbot FAB -->
+    <button class="ai-fab" id="aiFab" onclick="toggleChatbot()" title="المساعد الذكي">
+        <i class="fa-solid fa-robot" id="aiFabIcon"></i>
+    </button>
+
+    <!-- AI Chatbot Drawer -->
+    <div class="ai-drawer" id="aiDrawer">
+        <div class="ai-drawer-header">
+            <div class="ai-avatar"><i class="fa-solid fa-robot"></i></div>
+            <div>
+                <div class="ai-name">المساعد الذكي CNI</div>
+                <div class="ai-status">🟢 متاح الآن</div>
+            </div>
+            <button class="ai-drawer-close" onclick="toggleChatbot()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="ai-messages" id="aiMessages">
+            <div class="msg-bubble bot">
+                مرحباً! أنا مساعدك الذكي في المركز الوطني للإعلامية 🎓<br>
+                يمكنني مساعدتك في إدارة الدورات، اقتراح برامج التكوين، والإجابة على أسئلتك المهنية.
+            </div>
+        </div>
+        <div class="ai-input-area">
+            <input type="text" id="aiInput" placeholder="اكتب سؤالك هنا..." 
+                   onkeypress="if(event.key==='Enter') sendAIMessage()">
+            <button class="ai-send-btn" onclick="sendAIMessage()">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
     <script>
-    // Gestion du thème sombre/clair
+    // ============================================
+    // THEME MANAGEMENT
+    // ============================================
     const themeToggleBtn = document.getElementById('themeToggleBtn');
     const themeIcon = document.getElementById('themeIcon');
     const themeText = document.getElementById('themeText');
@@ -91,7 +171,6 @@
     themeToggleBtn.addEventListener('click', () => {
         let theme = document.documentElement.getAttribute('data-theme');
         let newTheme = theme === 'dark' ? 'light' : 'dark';
-        
         document.documentElement.setAttribute('data-theme', newTheme);
         localStorage.setItem('theme', newTheme);
         updateThemeUI(newTheme);
@@ -107,7 +186,9 @@
         }
     }
 
-    // Gestion automatique de la fermeture des toasts après 5 secondes
+    // ============================================
+    // TOAST NOTIFICATIONS
+    // ============================================
     document.addEventListener('DOMContentLoaded', () => {
         const toasts = document.querySelectorAll('.toast');
         toasts.forEach(toast => {
@@ -116,9 +197,11 @@
                 setTimeout(() => toast.remove(), 400);
             }, 5000);
         });
+        
+        // Load sidebar badges
+        loadSidebarBadges();
     });
 
-    // Fonction JS globale pour injecter un toast à la volée
     function showToast(title, message, type = 'success') {
         const container = document.getElementById('toastContainer');
         const toast = document.createElement('div');
@@ -140,11 +223,133 @@
         `;
         
         container.appendChild(toast);
-        
         setTimeout(() => {
             toast.style.animation = 'slideOut 0.4s forwards';
             setTimeout(() => toast.remove(), 400);
         }, 5000);
+    }
+
+    // ============================================
+    // MODAL CONFIRMATION
+    // ============================================
+    let pendingDeleteUrl = null;
+
+    function openModal(title, desc, confirmUrl) {
+        document.getElementById('modalTitle').textContent = title;
+        document.getElementById('modalDesc').textContent = desc;
+        pendingDeleteUrl = confirmUrl;
+        document.getElementById('globalModal').classList.add('open');
+    }
+
+    function closeModal() {
+        document.getElementById('globalModal').classList.remove('open');
+        pendingDeleteUrl = null;
+    }
+
+    document.getElementById('modalConfirmBtn').addEventListener('click', () => {
+        if (pendingDeleteUrl) window.location.href = pendingDeleteUrl;
+    });
+
+    document.getElementById('globalModal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeModal();
+    });
+
+    function confirmDelete(numAct, type = 'cycle') {
+        const url = type === 'cycle' 
+            ? `/cycles/delete/${encodeURIComponent(numAct)}`
+            : `/formateurs/delete/${encodeURIComponent(numAct)}`;
+        const desc = type === 'cycle'
+            ? `هل أنت متأكد من رغبتك في حذف الدورة التكوينية ذات الرقم "${numAct}"؟ لا يمكن التراجع عن هذا الإجراء.`
+            : `هل أنت متأكد من رغبتك في حذف المكوّن "${numAct}"؟ قد يؤثر هذا على الدورات المرتبطة به.`;
+        openModal('تأكيد الحذف', desc, url);
+    }
+
+    // ============================================
+    // AI CHATBOT
+    // ============================================
+    let chatbotOpen = false;
+
+    function toggleChatbot() {
+        chatbotOpen = !chatbotOpen;
+        const drawer = document.getElementById('aiDrawer');
+        const fabIcon = document.getElementById('aiFabIcon');
+        
+        if (chatbotOpen) {
+            drawer.classList.add('open');
+            fabIcon.className = 'fa-solid fa-xmark';
+            document.getElementById('aiInput').focus();
+        } else {
+            drawer.classList.remove('open');
+            fabIcon.className = 'fa-solid fa-robot';
+        }
+    }
+
+    async function sendAIMessage() {
+        const input = document.getElementById('aiInput');
+        const msg = input.value.trim();
+        if (!msg) return;
+        
+        appendMessage(msg, 'user');
+        input.value = '';
+        
+        // Typing indicator
+        const typingId = 'typing-' + Date.now();
+        appendTyping(typingId);
+        
+        try {
+            const res = await fetch('/api/ai-chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: msg })
+            });
+            const data = await res.json();
+            removeTyping(typingId);
+            appendMessage(data.reply || 'عذراً، حدث خطأ.', 'bot');
+        } catch (e) {
+            removeTyping(typingId);
+            appendMessage('خطأ في الاتصال بالمساعد الذكي.', 'bot');
+        }
+    }
+
+    function appendMessage(text, role) {
+        const container = document.getElementById('aiMessages');
+        const div = document.createElement('div');
+        div.className = `msg-bubble ${role}`;
+        div.textContent = text;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function appendTyping(id) {
+        const container = document.getElementById('aiMessages');
+        const div = document.createElement('div');
+        div.className = 'msg-bubble bot typing';
+        div.id = id;
+        div.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function removeTyping(id) {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+    }
+
+    // ============================================
+    // SIDEBAR BADGES (live counters)
+    // ============================================
+    async function loadSidebarBadges() {
+        try {
+            const res = await fetch('/api/stats');
+            const data = await res.json();
+            const totalCycles = (data.status.active || 0) + (data.status.upcoming || 0) + (data.status.past || 0);
+            const badgeCycles = document.getElementById('badge-cycles');
+            const badgeFormateurs = document.getElementById('badge-formateurs');
+            if (badgeCycles) badgeCycles.textContent = totalCycles;
+        } catch(e) {
+            const b = document.getElementById('badge-cycles');
+            if (b) b.style.display = 'none';
+        }
     }
     </script>
 </body>

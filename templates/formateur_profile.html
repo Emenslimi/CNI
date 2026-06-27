@@ -1,0 +1,217 @@
+{% extends 'layout.html' %}
+{% block title %}ملف المكوّن - {{ formateur.nom_prenom }} - CNI{% endblock %}
+
+{% block content %}
+<!-- Profile Hero -->
+<div class="profile-hero">
+    <div class="profile-avatar">
+        {{ formateur.nom_prenom[0] if formateur.nom_prenom else '?' }}
+    </div>
+    <div class="profile-info" style="flex-grow: 1;">
+        <h2>{{ formateur.nom_prenom }}</h2>
+        <p><i class="fa-solid fa-medal"></i> {{ formateur.specialite }}</p>
+        {% if formateur.direction %}
+        <p style="opacity: 0.75; font-size: 0.85rem;"><i class="fa-solid fa-sitemap"></i> {{ formateur.direction }}</p>
+        {% endif %}
+        <p style="opacity: 0.75; font-size: 0.85rem;"><i class="fa-solid fa-building"></i> {{ formateur.entreprise }}</p>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;">
+        <a href="{{ url_for('edit_formateur', nom_prenom=formateur.nom_prenom) }}" class="btn btn-sm" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">
+            <i class="fa-solid fa-pen-to-square"></i> تعديل
+        </a>
+        <a href="{{ url_for('list_formateurs') }}" class="btn btn-sm" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);">
+            <i class="fa-solid fa-arrow-right"></i> رجوع
+        </a>
+    </div>
+</div>
+
+<!-- Stats row -->
+<div class="profile-stats-row">
+    <div class="profile-stat-card">
+        <span class="stat-num">{{ total_cycles }}</span>
+        <span class="stat-lbl">إجمالي الدورات</span>
+    </div>
+    <div class="profile-stat-card" style="border-top: 3px solid var(--success-color);">
+        <span class="stat-num" style="color: var(--success-color);">{{ active_cycles }}</span>
+        <span class="stat-lbl">دورات نشطة</span>
+    </div>
+    <div class="profile-stat-card" style="border-top: 3px solid var(--text-muted);">
+        <span class="stat-num" style="color: var(--text-muted);">{{ past_cycles }}</span>
+        <span class="stat-lbl">دورات منتهية</span>
+    </div>
+</div>
+
+<div class="dashboard-row">
+    <!-- Training History -->
+    <div class="glass-container">
+        <div class="section-title">
+            <h3><i class="fa-solid fa-history"></i> سجل الدورات التكوينية</h3>
+            <span class="badge badge-primary">{{ total_cycles }} دورة</span>
+        </div>
+        
+        {% if cycles_history %}
+        <div class="table-responsive">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>رقم العملية</th>
+                        <th>الدورة التكوينية</th>
+                        <th>تاريخ البداية</th>
+                        <th>تاريخ النهاية</th>
+                        <th>القاعة</th>
+                        <th>الحالة</th>
+                        <th style="text-align: center;">إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cycle in cycles_history %}
+                    <tr>
+                        <td><strong>{{ cycle.num_act }}</strong></td>
+                        <td>{{ cycle.theme }}</td>
+                        <td>{{ cycle.date_deb }}</td>
+                        <td>{{ cycle.date_fin }}</td>
+                        <td><span class="badge badge-muted">قاعة {{ cycle.num_salle }}</span></td>
+                        <td>
+                            {% if today < cycle.date_deb|string %}
+                                <span class="badge badge-info"><i class="fa-solid fa-clock"></i> قادمة</span>
+                            {% elif today > cycle.date_fin|string %}
+                                <span class="badge badge-muted"><i class="fa-solid fa-check"></i> منتهية</span>
+                            {% else %}
+                                <span class="badge badge-success"><i class="fa-solid fa-circle" style="font-size:0.5rem;"></i> مستمرة</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            <a href="{{ url_for('generate_plan', num_act=cycle.num_act) }}" class="btn btn-xs btn-ai" title="مخطط ذكي">
+                                <i class="fa-solid fa-robot"></i> مخطط
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fa-solid fa-calendar-xmark"></i>
+            <p>لم يشارك هذا المكوّن في أي دورة تكوينية بعد.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar info + AI -->
+    <div>
+        <!-- Profile Details -->
+        <div class="glass-container">
+            <div class="section-title">
+                <h3><i class="fa-solid fa-id-card"></i> معلومات المكوّن</h3>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 14px; font-size: 0.88rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+                    <span style="color: var(--text-secondary);">الاسم واللقب</span>
+                    <strong style="text-align: left;">{{ formateur.nom_prenom }}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+                    <span style="color: var(--text-secondary);">التخصص</span>
+                    <span class="badge badge-info">{{ formateur.specialite }}</span>
+                </div>
+                {% if formateur.direction %}
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+                    <span style="color: var(--text-secondary);">الإدارة / القسم</span>
+                    <strong>{{ formateur.direction }}</strong>
+                </div>
+                {% endif %}
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: var(--text-secondary);">المؤسسة</span>
+                    <strong>{{ formateur.entreprise }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workload Visual -->
+        {% if total_cycles > 0 %}
+        <div class="glass-container">
+            <div class="section-title">
+                <h3><i class="fa-solid fa-chart-simple"></i> حجم العمل</h3>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.82rem;">
+                        <span style="color: var(--text-secondary);">مستمرة</span>
+                        <span style="font-weight: 700; color: var(--success-color);">{{ active_cycles }}</span>
+                    </div>
+                    <div style="height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden;">
+                        <div style="height: 100%; width: {{ (active_cycles / total_cycles * 100)|int }}%; background: var(--success-color); border-radius: 4px; transition: width 1s ease;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.82rem;">
+                        <span style="color: var(--text-secondary);">منتهية</span>
+                        <span style="font-weight: 700; color: var(--text-muted);">{{ past_cycles }}</span>
+                    </div>
+                    <div style="height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden;">
+                        <div style="height: 100%; width: {{ (past_cycles / total_cycles * 100)|int }}%; background: var(--text-muted); border-radius: 4px; transition: width 1s ease;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- AI insight -->
+        <div class="glass-container" style="background: linear-gradient(135deg, rgba(124,58,237,0.06), rgba(37,99,235,0.04)); border-color: rgba(124,58,237,0.2);">
+            <div class="section-title">
+                <h3><i class="fa-solid fa-robot" style="color: var(--ai-color);"></i> تحليل ذكي</h3>
+            </div>
+            <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 14px;">
+                احصل على تحليل ذكي لملف هذا المكوّن وتوصيات مخصصة
+            </p>
+            <button class="btn btn-ai" style="width: 100%;" onclick="analyzeTrainer()">
+                <i class="fa-solid fa-sparkles"></i> تحليل الملف بالذكاء الاصطناعي
+            </button>
+            <div id="trainerAnalysis" style="display: none; margin-top: 16px; padding: 16px; background: var(--bg-primary); border-radius: var(--radius-sm); font-size: 0.85rem; color: var(--text-primary); line-height: 1.7; white-space: pre-line;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function analyzeTrainer() {
+    const btn = event.target;
+    const analysisDiv = document.getElementById('trainerAnalysis');
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> جارٍ التحليل...';
+    btn.disabled = true;
+    analysisDiv.style.display = 'block';
+    analysisDiv.textContent = 'جارٍ تحليل ملف المكوّن...';
+    
+    const trainerName = '{{ formateur.nom_prenom|e }}';
+    const specialite = '{{ formateur.specialite|e }}';
+    const totalCycles = {{ total_cycles }};
+    const activeCycles = {{ active_cycles }};
+    
+    try {
+        const res = await fetch('/api/ai-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: `حلل ملف المكوّن التالي وقدم توصيات مهنية:
+الاسم: ${trainerName}
+التخصص: ${specialite}
+إجمالي الدورات: ${totalCycles}
+دورات نشطة: ${activeCycles}
+
+قدم:
+1. تقييم موجز للملف المهني
+2. نقاط القوة الملاحظة
+3. توصيات للتطوير المهني
+4. دورات تكوينية مقترحة للمستقبل`
+            })
+        });
+        const data = await res.json();
+        analysisDiv.textContent = data.reply || 'لم يتمكن الذكاء الاصطناعي من إجراء التحليل.';
+    } catch(e) {
+        analysisDiv.textContent = 'خطأ في الاتصال.';
+    } finally {
+        btn.innerHTML = '<i class="fa-solid fa-sparkles"></i> إعادة التحليل';
+        btn.disabled = false;
+    }
+}
+</script>
+{% endblock %}

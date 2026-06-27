@@ -1,0 +1,198 @@
+{% extends 'layout.html' %}
+{% block title %}التقويم التفاعلي - المركز الوطني للإعلامية{% endblock %}
+
+{% block content %}
+<div class="header-wrapper">
+    <div class="header-title">
+        <h1>التقويم التفاعلي للدورات</h1>
+        <p>عرض جميع الدورات التكوينية على التقويم الشهري</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('list_cycles') }}" class="btn btn-secondary btn-sm">
+            <i class="fa-solid fa-list"></i> عرض القائمة
+        </a>
+        <a href="{{ url_for('list_cycles') }}" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-plus"></i> إضافة دورة
+        </a>
+    </div>
+</div>
+
+<div class="glass-container">
+    <!-- Calendar Header -->
+    <div class="calendar-header">
+        <div class="calendar-nav">
+            <button onclick="changeMonth(-1)" class="btn btn-secondary btn-sm">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+            <div class="calendar-month-title" id="calMonthTitle">...</div>
+            <button onclick="changeMonth(1)" class="btn btn-secondary btn-sm">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+        </div>
+        <button onclick="goToday()" class="btn btn-info btn-sm">
+            <i class="fa-solid fa-calendar-day"></i> اليوم
+        </button>
+    </div>
+
+    <!-- Day headers (RTL: Sat to Fri) -->
+    <div class="calendar-grid" id="calGrid">
+        <div class="cal-day-header">السبت</div>
+        <div class="cal-day-header">الأحد</div>
+        <div class="cal-day-header">الاثنين</div>
+        <div class="cal-day-header">الثلاثاء</div>
+        <div class="cal-day-header">الأربعاء</div>
+        <div class="cal-day-header">الخميس</div>
+        <div class="cal-day-header">الجمعة</div>
+    </div>
+    
+    <!-- Legend -->
+    <div class="calendar-legend">
+        <div class="legend-item">
+            <div class="legend-dot" style="background: #10b981;"></div>
+            <span>مستمرة</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot" style="background: #3b82f6;"></div>
+            <span>قادمة</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot" style="background: #6b7280;"></div>
+            <span>منتهية</span>
+        </div>
+    </div>
+</div>
+
+<!-- Event Detail Popup -->
+<div id="eventPopup" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 6000; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 28px; min-width: 320px; max-width: 420px; box-shadow: var(--shadow-lg);">
+    <button onclick="document.getElementById('eventPopup').style.display='none'" style="position: absolute; top: 14px; left: 14px; background: transparent; border: none; cursor: pointer; color: var(--text-muted); font-size: 1.1rem;">
+        <i class="fa-solid fa-xmark"></i>
+    </button>
+    <div id="popupContent"></div>
+</div>
+<div id="eventOverlay" onclick="document.getElementById('eventPopup').style.display='none'; this.style.display='none';" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 5999;"></div>
+
+<script>
+const allEvents = {{ events|safe }};
+let currentYear = new Date().getFullYear();
+let currentMonth = new Date().getMonth(); // 0-indexed
+const today = new Date().toISOString().split('T')[0];
+
+const arabicMonths = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+function changeMonth(dir) {
+    currentMonth += dir;
+    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+    renderCalendar();
+}
+
+function goToday() {
+    currentYear = new Date().getFullYear();
+    currentMonth = new Date().getMonth();
+    renderCalendar();
+}
+
+function renderCalendar() {
+    const grid = document.getElementById('calGrid');
+    document.getElementById('calMonthTitle').textContent = arabicMonths[currentMonth] + ' ' + currentYear;
+    
+    // Remove old day cells (keep 7 header cells)
+    const cells = grid.querySelectorAll('.cal-day');
+    cells.forEach(c => c.remove());
+    
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    
+    // Day of week: 0=Sun ... 6=Sat. Our grid starts Saturday (day 6)
+    // Offset: (firstDay.getDay() + 1) % 7 to map Sunday=0 to col 1
+    // Saturday=6 -> col 0, Sunday=0 -> col 1, ..., Friday=5 -> col 6
+    const dayMap = [1, 2, 3, 4, 5, 6, 0]; // sun=0->col1, sat=6->col0
+    let startCol = (firstDay.getDay() + 1) % 7;
+    
+    // Add empty cells
+    for (let i = 0; i < startCol; i++) {
+        const empty = document.createElement('div');
+        empty.className = 'cal-day other-month';
+        grid.appendChild(empty);
+    }
+    
+    // Add day cells
+    for (let d = 1; d <= lastDay.getDate(); d++) {
+        const cell = document.createElement('div');
+        const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        cell.className = 'cal-day' + (dateStr === today ? ' today-cell' : '');
+        
+        const numEl = document.createElement('span');
+        numEl.className = 'cal-day-num';
+        numEl.textContent = d;
+        cell.appendChild(numEl);
+        
+        // Find events on this date
+        const dayEvents = allEvents.filter(ev => ev.start <= dateStr && dateStr <= ev.end);
+        dayEvents.slice(0, 3).forEach(ev => {
+            const evEl = document.createElement('div');
+            evEl.className = 'cal-event';
+            evEl.style.background = ev.color;
+            evEl.textContent = ev.title;
+            evEl.title = ev.title;
+            evEl.onclick = () => showEventDetail(ev);
+            cell.appendChild(evEl);
+        });
+        
+        if (dayEvents.length > 3) {
+            const more = document.createElement('div');
+            more.style.cssText = 'font-size:0.65rem; color:var(--text-muted); padding:1px 4px;';
+            more.textContent = `+${dayEvents.length - 3} أخرى`;
+            cell.appendChild(more);
+        }
+        
+        grid.appendChild(cell);
+    }
+}
+
+function showEventDetail(ev) {
+    const trainers = [ev.for1, ev.for2, ev.for3].filter(Boolean).join('، ') || 'غير محدد';
+    document.getElementById('popupContent').innerHTML = `
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+            <div style="width: 40px; height: 40px; border-radius: ${getComputedStyle(document.body).getPropertyValue('--radius-sm')}; background: ${ev.color}; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem; flex-shrink: 0;">
+                <i class="fa-solid fa-graduation-cap"></i>
+            </div>
+            <div>
+                <div style="font-weight: 700; font-size: 1rem; color: var(--text-primary);">${ev.title}</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">${ev.num_act}</div>
+            </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem;">
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--text-secondary);"><i class="fa-solid fa-calendar"></i> البداية</span>
+                <strong>${ev.start}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--text-secondary);"><i class="fa-solid fa-calendar-check"></i> النهاية</span>
+                <strong>${ev.end}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--text-secondary);"><i class="fa-solid fa-door-open"></i> القاعة</span>
+                <span class="badge badge-muted">قاعة ${ev.num_salle}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--text-secondary);"><i class="fa-solid fa-chalkboard-user"></i> المكوّنون</span>
+                <span style="text-align: left; max-width: 180px;">${trainers}</span>
+            </div>
+        </div>
+        <div style="margin-top: 20px; display: flex; gap: 8px;">
+            <a href="/cycles/generate_plan/${encodeURIComponent(ev.num_act)}" class="btn btn-ai btn-sm" style="flex: 1;">
+                <i class="fa-solid fa-robot"></i> مخطط ذكي
+            </a>
+            <a href="/cycles/edit/${encodeURIComponent(ev.num_act)}" class="btn btn-secondary btn-sm" style="flex: 1;">
+                <i class="fa-solid fa-pen"></i> تعديل
+            </a>
+        </div>
+    `;
+    document.getElementById('eventPopup').style.display = 'block';
+    document.getElementById('eventOverlay').style.display = 'block';
+}
+
+document.addEventListener('DOMContentLoaded', renderCalendar);
+</script>
+{% endblock %}

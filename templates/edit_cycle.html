@@ -101,17 +101,39 @@
 </div>
 {% endblock %}
 
-{% block script %}
 <script>
 function validateForm() {
     const dateDeb = document.getElementById('date_deb').value;
     const dateFin = document.getElementById('date_fin').value;
-    
     if (new Date(dateFin) < new Date(dateDeb)) {
-        alert('خطأ: تاريخ نهاية الدورة لا يمكن أن يكون قبل تاريخ بدايتها.');
+        showToast('خطأ في التاريخ', 'تاريخ نهاية الدورة لا يمكن أن يكون قبل تاريخ بدايتها.', 'danger');
         return false;
     }
     return true;
 }
+
+// Conflict check on edit
+let conflictTimer = null;
+async function checkConflict() {
+    clearTimeout(conflictTimer);
+    conflictTimer = setTimeout(async () => {
+        const salle = document.getElementById('num_salle').value;
+        const deb = document.getElementById('date_deb').value;
+        const fin = document.getElementById('date_fin').value;
+        const alert = document.getElementById('conflictAlert');
+        const msg = document.getElementById('conflictMsg');
+        if (!salle || !deb || !fin || !alert) return;
+        try {
+            const res = await fetch(`/api/check-conflict?num_salle=${salle}&date_deb=${deb}&date_fin=${fin}&exclude={{ cycle.num_act|e }}`);
+            const data = await res.json();
+            if (data.conflict) {
+                alert.className = 'conflict-alert show';
+                msg.textContent = data.message;
+            } else {
+                alert.className = 'conflict-alert conflict-ok show';
+                msg.textContent = 'القاعة متاحة في هذه الفترة ✓';
+            }
+        } catch(e) {}
+    }, 600);
+}
 </script>
-{% endblock %}

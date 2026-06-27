@@ -1,35 +1,316 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <title>المخطط البيداغوجي للدورة</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-</head>
-<body class="bg-light p-5">
-    <div class="container bg-white p-4 rounded shadow">
-        <h1 class="mb-4 text-primary">المخطط التوجيهي الذكي للدورة التكوينية</h1>
-        <hr>
-        <div class="row mb-3">
-            <div class="col-md-6"><strong>رقم العملية:</strong> {{ cycle.num_act }}</div>
-            <div class="col-md-6"><strong>موضوع الدورة:</strong> {{ cycle.theme }}</div>
+{% extends 'layout.html' %}
+{% block title %}المخطط البيداغوجي - {{ cycle.theme }} - CNI{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- Plan Hero -->
+<div class="plan-hero">
+    <div class="plan-hero-icon">
+        <i class="fa-solid fa-brain"></i>
+    </div>
+    <div style="flex-grow: 1; min-width: 0;">
+        <h2>المخطط التوجيهي الذكي للدورة التكوينية</h2>
+        <p>تم توليده بواسطة الذكاء الاصطناعي Gemini 2.5 Flash</p>
+        <div class="plan-meta-row">
+            <span class="plan-meta-item">
+                <i class="fa-solid fa-hashtag"></i>
+                {{ cycle.num_act }}
+            </span>
+            <span class="plan-meta-item">
+                <i class="fa-solid fa-door-open"></i>
+                قاعة {{ cycle.num_salle }}
+            </span>
+            <span class="plan-meta-item">
+                <i class="fa-solid fa-calendar"></i>
+                {{ cycle.date_deb }} → {{ cycle.date_fin }}
+            </span>
+            <span class="plan-meta-item">
+                <i class="fa-solid fa-clock"></i>
+                {{ nb_jours }} أيام
+            </span>
         </div>
-        
-        <div class="card my-4">
-            <div class="card-header bg-dark text-white">المحتوى المقترح من طرف الذكاء الاصطناعي</div>
-            <div class="card-body" id="markdown-content" style="white-space: pre-wrap;">
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;">
+        <button onclick="window.print()" class="btn btn-sm" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">
+            <i class="fa-solid fa-print"></i> طباعة / PDF
+        </button>
+        <a href="{{ url_for('list_cycles') }}" class="btn btn-sm" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);">
+            <i class="fa-solid fa-arrow-right"></i> رجوع
+        </a>
+    </div>
+</div>
+
+<!-- Trainers row -->
+<div class="glass-container" style="padding: 20px 28px; margin-bottom: 24px;">
+    <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+        <span style="font-weight: 700; color: var(--text-secondary); font-size: 0.88rem;">
+            <i class="fa-solid fa-chalkboard-user" style="color: var(--accent-color);"></i> المكوّنون:
+        </span>
+        {% set trainers = [] %}
+        {% if cycle.for1 and cycle.for1 != '' %}{% set _ = trainers.append(cycle.for1) %}{% endif %}
+        {% if cycle.for2 and cycle.for2 != '' %}{% set _ = trainers.append(cycle.for2) %}{% endif %}
+        {% if cycle.for3 and cycle.for3 != '' %}{% set _ = trainers.append(cycle.for3) %}{% endif %}
+        {% if trainers %}
+            {% for t in trainers %}
+            <div style="display: flex; align-items: center; gap: 8px; background: var(--bg-primary); padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border-color);">
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-gradient); color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.78rem;">
+                    {{ t[0] }}
+                </div>
+                <span style="font-size: 0.85rem; font-weight: 600;">{{ t }}</span>
+            </div>
+            {% endfor %}
+        {% else %}
+            <span style="color: var(--text-muted); font-size: 0.85rem;">غير محدد</span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Main Content Grid -->
+<div style="display: grid; grid-template-columns: 1fr 380px; gap: 24px; align-items: start;">
+    
+    <!-- Plan Content -->
+    <div>
+        <div class="glass-container" style="padding: 0; overflow: hidden;">
+            <div style="padding: 16px 28px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-primary);">
+                <h3 style="font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-file-lines" style="color: var(--accent-color);"></i>
+                    المحتوى المقترح من طرف الذكاء الاصطناعي
+                </h3>
+                <button onclick="loadQuiz()" class="btn btn-ai btn-sm" id="quizBtn">
+                    <i class="fa-solid fa-question-circle"></i> توليد تقييم QCM
+                </button>
+            </div>
+            <div class="plan-content-box" id="planContent" style="border: none; border-radius: 0; margin: 0;">
                 {{ plan_content }}
             </div>
         </div>
-        
-        <a href="{{ url_for('list_cycles') }}" class="btn btn-secondary">العودة لقائمة الدورات</a>
-        <button onclick="window.print()" class="btn btn-success">طباعة المخطط (PDF)</button>
+
+        <!-- QCM Section -->
+        <div id="quizSection" style="display: none;">
+            <div class="glass-container" style="padding: 0; overflow: hidden;">
+                <div style="padding: 16px 28px; border-bottom: 1px solid var(--border-color); background: linear-gradient(135deg, rgba(124,58,237,0.08), rgba(37,99,235,0.05)); display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-question-circle" style="color: var(--ai-color);"></i>
+                        تقييم ذكي - QCM
+                    </h3>
+                    <div id="quizProgress" style="font-size: 0.82rem; color: var(--text-muted);"></div>
+                </div>
+                <div style="padding: 28px;">
+                    <div id="quizLoading" style="text-align: center; padding: 40px; display: none;">
+                        <div style="font-size: 2rem; margin-bottom: 12px; animation: spin 1s linear infinite; display: inline-block;">
+                            <i class="fa-solid fa-circle-notch" style="color: var(--ai-color);"></i>
+                        </div>
+                        <p style="color: var(--text-secondary);">جارٍ توليد الأسئلة بالذكاء الاصطناعي…</p>
+                    </div>
+                    <div class="quiz-container" id="quizContainer"></div>
+                    <div class="quiz-score-box" id="scoreBox">
+                        <div class="score-num" id="scoreNum">0/5</div>
+                        <div class="score-lbl">نقاط صحيحة — أحسنت!</div>
+                        <button onclick="retryQuiz()" class="btn btn-sm" style="margin-top: 16px; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">
+                            <i class="fa-solid fa-rotate-right"></i> إعادة التقييم
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <script>
-        // Convertit le texte brut Markdown renvoyé par Gemini en HTML propre
-        const contentDiv = document.getElementById('markdown-content');
-        contentDiv.innerHTML = marked.parse(contentDiv.innerHTML);
-    </script>
-</body>
-</html>
+    <!-- Sidebar info -->
+    <div>
+        <div class="glass-container">
+            <div class="section-title">
+                <h3><i class="fa-solid fa-info-circle"></i> معلومات الدورة</h3>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 14px; font-size: 0.88rem;">
+                <div style="display: flex; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);">
+                    <span style="color: var(--text-secondary);">الموضوع</span>
+                    <span style="font-weight: 600; text-align: left; max-width: 180px;">{{ cycle.theme }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);">
+                    <span style="color: var(--text-secondary);">رقم العملية</span>
+                    <span style="font-weight: 600; font-family: monospace;">{{ cycle.num_act }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);">
+                    <span style="color: var(--text-secondary);">مدة الدورة</span>
+                    <span style="font-weight: 600; color: var(--accent-color);">{{ nb_jours }} أيام</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);">
+                    <span style="color: var(--text-secondary);">القاعة</span>
+                    <span class="badge badge-muted">قاعة {{ cycle.num_salle }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--text-secondary);">الحالة</span>
+                    {% set today = today if today is defined else '' %}
+                    <span class="badge badge-success">مسجلة</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-container" style="background: linear-gradient(135deg, rgba(124,58,237,0.06), rgba(37,99,235,0.04)); border-color: rgba(124,58,237,0.2);">
+            <div class="section-title">
+                <h3><i class="fa-solid fa-robot" style="color: var(--ai-color);"></i> اقتراحات ذكية</h3>
+            </div>
+            <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 14px;">استفسر من المساعد الذكي حول هذه الدورة</p>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <button class="btn btn-ai btn-sm" onclick="askAboutCycle('ما هي أفضل المراجع والكتب المقترحة لهذه الدورة؟')">
+                    <i class="fa-solid fa-book"></i> مراجع مقترحة
+                </button>
+                <button class="btn btn-ai btn-sm" onclick="askAboutCycle('ما هي المتطلبات الأساسية لهذا التكوين؟')">
+                    <i class="fa-solid fa-list-check"></i> المتطلبات المسبقة
+                </button>
+                <button class="btn btn-ai btn-sm" onclick="askAboutCycle('كيف أقيّم المتكونين في نهاية هذه الدورة؟')">
+                    <i class="fa-solid fa-star"></i> طرق التقييم
+                </button>
+            </div>
+        </div>
+
+        <!-- Print tip -->
+        <div style="background: var(--info-bg); border: 1px solid var(--info-color); border-radius: var(--radius-sm); padding: 14px; font-size: 0.82rem; color: var(--text-primary);">
+            <i class="fa-solid fa-lightbulb" style="color: var(--info-color); margin-left: 6px;"></i>
+            لطباعة هذا المخطط كـ PDF، انقر على زر <strong>طباعة / PDF</strong> واختر <strong>حفظ كـ PDF</strong>.
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+</style>
+
+<script>
+// Convert Markdown to HTML
+document.addEventListener('DOMContentLoaded', () => {
+    const contentDiv = document.getElementById('planContent');
+    if (contentDiv && typeof marked !== 'undefined') {
+        contentDiv.innerHTML = marked.parse(contentDiv.textContent || contentDiv.innerText);
+    }
+});
+
+// QCM Generation
+const cycleNumAct = '{{ cycle.num_act|e }}';
+let quizData = null;
+let selectedAnswers = {};
+
+async function loadQuiz() {
+    const btn = document.getElementById('quizBtn');
+    const section = document.getElementById('quizSection');
+    const loading = document.getElementById('quizLoading');
+    const container = document.getElementById('quizContainer');
+    
+    section.style.display = 'block';
+    loading.style.display = 'block';
+    container.innerHTML = '';
+    document.getElementById('scoreBox').classList.remove('show');
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> جارٍ التوليد...';
+    btn.disabled = true;
+    
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+    try {
+        const res = await fetch(`/api/ai-quiz/${encodeURIComponent(cycleNumAct)}`);
+        const data = await res.json();
+        loading.style.display = 'none';
+        
+        if (data.error) {
+            container.innerHTML = `<div style="color: var(--danger-color); text-align:center; padding:20px;">${data.error}</div>`;
+        } else {
+            quizData = data;
+            renderQuiz(data.questions);
+        }
+    } catch(e) {
+        loading.style.display = 'none';
+        container.innerHTML = '<div style="color: var(--danger-color); text-align:center; padding:20px;">خطأ في الاتصال.</div>';
+    } finally {
+        btn.innerHTML = '<i class="fa-solid fa-question-circle"></i> إعادة التوليد';
+        btn.disabled = false;
+    }
+}
+
+function renderQuiz(questions) {
+    const container = document.getElementById('quizContainer');
+    selectedAnswers = {};
+    container.innerHTML = '';
+    
+    document.getElementById('quizProgress').textContent = `${questions.length} أسئلة`;
+    
+    questions.forEach((q, idx) => {
+        const card = document.createElement('div');
+        card.className = 'quiz-question-card';
+        card.innerHTML = `
+            <div class="quiz-q-num">${idx + 1}</div>
+            <div class="quiz-q-text">${q.question}</div>
+            <div class="quiz-options" id="opts-${idx}">
+                ${q.options.map((opt, oi) => `
+                    <div class="quiz-option" id="opt-${idx}-${oi}" onclick="selectAnswer(${idx}, ${oi}, ${q.correct}, \`${q.explanation.replace(/`/g,"'")}\`)">
+                        <span style="font-weight: 700; color: var(--accent-color); min-width: 20px;">
+                            ${['أ','ب','ج','د'][oi]})
+                        </span>
+                        ${opt}
+                    </div>
+                `).join('')}
+            </div>
+            <div class="quiz-explanation" id="exp-${idx}">
+                <i class="fa-solid fa-circle-info" style="color: var(--info-color); margin-left: 6px;"></i>
+                ${q.explanation}
+            </div>
+        `;
+        container.appendChild(card);
+    });
+    
+    // Submit button
+    const submitBtn = document.createElement('button');
+    submitBtn.className = 'btn btn-primary';
+    submitBtn.style.width = '100%';
+    submitBtn.style.marginTop = '16px';
+    submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> إرسال الإجابات';
+    submitBtn.onclick = submitQuiz;
+    container.appendChild(submitBtn);
+}
+
+function selectAnswer(qIdx, optIdx, correct, explanation) {
+    if (selectedAnswers[qIdx] !== undefined) return; // Already answered
+    
+    selectedAnswers[qIdx] = optIdx;
+    const opts = document.getElementById(`opts-${qIdx}`);
+    opts.querySelectorAll('.quiz-option').forEach((el, i) => {
+        el.style.pointerEvents = 'none';
+        if (i === correct) el.classList.add('correct');
+        else if (i === optIdx && optIdx !== correct) el.classList.add('wrong');
+    });
+    
+    document.getElementById(`exp-${qIdx}`).classList.add('show');
+}
+
+function submitQuiz() {
+    if (!quizData) return;
+    let score = 0;
+    quizData.questions.forEach((q, i) => {
+        if (selectedAnswers[i] === q.correct) score++;
+    });
+    
+    // Force reveal all
+    quizData.questions.forEach((q, i) => {
+        if (selectedAnswers[i] === undefined) selectAnswer(i, -1, q.correct, q.explanation);
+    });
+    
+    const scoreBox = document.getElementById('scoreBox');
+    document.getElementById('scoreNum').textContent = `${score} / ${quizData.questions.length}`;
+    scoreBox.classList.add('show');
+    scoreBox.scrollIntoView({ behavior: 'smooth' });
+}
+
+function retryQuiz() {
+    loadQuiz();
+}
+
+// AI quick questions about this cycle
+function askAboutCycle(question) {
+    const fullQ = `بخصوص دورة تكوينية حول "${cycleNumAct}" - ${question}`;
+    toggleChatbot();
+    document.getElementById('aiInput').value = fullQ;
+    sendAIMessage();
+}
+</script>
+{% endblock %}

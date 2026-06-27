@@ -1,77 +1,106 @@
 {% extends 'layout.html' %}
-
 {% block title %}لوحة القيادة - المركز الوطني للإعلامية{% endblock %}
 
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
 {% block content %}
-<!-- Header Section -->
+<!-- Header -->
 <div class="header-wrapper">
     <div class="header-title">
-        <h1>لوحة قيادة إدارة التدريب</h1>
-        <p>أهلاً بك في نظام إدارة الدورات التكوينية والمكونين الخاص بالمركز الوطني للإعلامية</p>
+        <h1>لوحة قيادة إدارة التكوين</h1>
+        <p>أهلاً بك في نظام إدارة الدورات التكوينية والمكوّنين</p>
     </div>
     <div class="header-actions">
         <span class="badge badge-info" style="padding: 8px 16px; font-size: 0.9rem;">
-            <i class="fa-regular fa-calendar-check" style="margin-left: 8px;"></i>
+            <i class="fa-regular fa-calendar-check"></i>
             {{ today }}
         </span>
     </div>
 </div>
 
-<!-- Statistics Cards Grid -->
+<!-- Countdown for next cycle -->
+{% if next_cycle %}
+{% set days_left = ((next_cycle.date_deb | string | replace('-','')) | int - (today | replace('-','') | int)) %}
+<div class="countdown-widget">
+    <div class="countdown-icon"><i class="fa-solid fa-hourglass-half"></i></div>
+    <div class="countdown-info">
+        <div class="countdown-title">الدورة القادمة</div>
+        <div class="countdown-theme">{{ next_cycle.theme }}</div>
+        <div style="font-size: 0.8rem; opacity:0.8; margin-top: 4px;">
+            <i class="fa-solid fa-door-open"></i> قاعة {{ next_cycle.num_salle }} &nbsp;|&nbsp;
+            <i class="fa-solid fa-calendar"></i> {{ next_cycle.date_deb }}
+        </div>
+    </div>
+    <div class="countdown-days">
+        <span class="countdown-num" id="daysCountdown">…</span>
+        <span class="countdown-lbl">يوماً متبقياً</span>
+    </div>
+</div>
+{% endif %}
+
+<!-- Statistics Cards -->
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-info">
             <span>إجمالي الدورات التكوينية</span>
             <h2>{{ total_cycles }}</h2>
         </div>
-        <div class="stat-icon">
-            <i class="fa-solid fa-graduation-cap"></i>
-        </div>
+        <div class="stat-icon"><i class="fa-solid fa-graduation-cap"></i></div>
     </div>
-    
     <div class="stat-card success">
         <div class="stat-info">
             <span>إجمالي المكوّنين</span>
             <h2>{{ total_formateurs }}</h2>
         </div>
-        <div class="stat-icon">
-            <i class="fa-solid fa-users"></i>
-        </div>
+        <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
     </div>
-    
     <div class="stat-card warning">
         <div class="stat-info">
             <span>القاعات المستعملة حالياً</span>
             <h2>{{ active_rooms }}</h2>
         </div>
-        <div class="stat-icon">
-            <i class="fa-solid fa-door-open"></i>
-        </div>
+        <div class="stat-icon"><i class="fa-solid fa-door-open"></i></div>
     </div>
-    
     <div class="stat-card danger">
         <div class="stat-info">
             <span>الدورات النشطة / القادمة</span>
             <h2>{{ active_cycles }}</h2>
         </div>
-        <div class="stat-icon">
-            <i class="fa-solid fa-clock"></i>
-        </div>
+        <div class="stat-icon"><i class="fa-solid fa-clock"></i></div>
     </div>
 </div>
 
-<!-- Dashboard Layout Rows -->
+<!-- Charts Row -->
 <div class="dashboard-row">
-    <!-- Column 1: Recent Training Cycles -->
     <div class="glass-container">
         <div class="section-title">
-            <h3>
-                <i class="fa-solid fa-circle-play"></i>
-                أحدث الدورات التكوينية المضافة
-            </h3>
+            <h3><i class="fa-solid fa-chart-line"></i> الدورات التكوينية (12 شهراً)</h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="monthlyChart"></canvas>
+        </div>
+    </div>
+    <div class="glass-container">
+        <div class="section-title">
+            <h3><i class="fa-solid fa-chart-pie"></i> توزيع الدورات حسب الحالة</h3>
+        </div>
+        <div class="chart-container" style="height: 220px;">
+            <canvas id="statusChart"></canvas>
+        </div>
+        <div style="margin-top: 16px;" id="statusLegend"></div>
+    </div>
+</div>
+
+<!-- Tables Row -->
+<div class="dashboard-row">
+    <!-- Recent Cycles -->
+    <div class="glass-container">
+        <div class="section-title">
+            <h3><i class="fa-solid fa-circle-play"></i> أحدث الدورات التكوينية</h3>
             <a href="{{ url_for('list_cycles') }}" class="btn btn-secondary btn-sm">عرض الكل</a>
         </div>
-        
         <div class="table-responsive">
             {% if recent_cycles %}
             <table class="custom-table">
@@ -95,74 +124,175 @@
                         <td>قاعة {{ cycle.num_salle }}</td>
                         <td>
                             {% if today < cycle.date_deb|string %}
-                                <span class="badge badge-info">قادمة</span>
+                                <span class="badge badge-info"><i class="fa-solid fa-clock"></i> قادمة</span>
                             {% elif today > cycle.date_fin|string %}
-                                <span class="badge badge-danger">منتهية</span>
+                                <span class="badge badge-muted"><i class="fa-solid fa-check"></i> منتهية</span>
                             {% else %}
-                                <span class="badge badge-success">مستمرة</span>
+                                <span class="badge badge-success"><i class="fa-solid fa-circle"></i> مستمرة</span>
                             {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
-            {% else: %}
+            {% else %}
             <div class="empty-state">
                 <i class="fa-regular fa-folder-open"></i>
                 <p>لا توجد دورات تكوينية مسجلة حالياً.</p>
-                <a href="{{ url_for('list_cycles', action='new') }}" class="btn btn-primary btn-sm">إضافة دورة جديدة</a>
+                <a href="{{ url_for('list_cycles') }}" class="btn btn-primary btn-sm">إضافة دورة جديدة</a>
             </div>
             {% endif %}
         </div>
     </div>
     
-    <!-- Column 2: Recent Trainers & Quick Actions -->
+    <!-- Recent Trainers & Quick Actions -->
     <div class="glass-container">
         <div class="section-title">
-            <h3>
-                <i class="fa-solid fa-chalkboard-user"></i>
-                قائمة المكوّنين الجدد
-            </h3>
+            <h3><i class="fa-solid fa-chalkboard-user"></i> قائمة المكوّنين</h3>
+            <a href="{{ url_for('list_formateurs') }}" class="btn btn-secondary btn-sm">عرض الكل</a>
         </div>
-        
-        <div class="recent-trainers-list" style="margin-bottom: 24px;">
+        <div style="margin-bottom: 20px;">
             {% if recent_formateurs %}
-                <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px;">
+                <ul style="list-style: none; display: flex; flex-direction: column; gap: 10px;">
                     {% for formateur in recent_formateurs %}
-                    <li style="display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: var(--radius-sm); background-color: var(--bg-primary);">
-                        <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.9rem;">
-                            {{ formateur.nom_prenom[0] }}
+                    <li style="display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: var(--radius-sm); background-color: var(--bg-primary); transition: var(--transition);">
+                        <div style="width: 38px; height: 38px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 0.95rem; flex-shrink:0;">
+                            {{ formateur.nom_prenom[0] if formateur.nom_prenom else '?' }}
                         </div>
-                        <div style="flex-grow: 1;">
-                            <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">
+                        <div style="flex-grow: 1; min-width: 0;">
+                            <div style="font-weight: 600; font-size: 0.88rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 {{ formateur.nom_prenom }}
                             </div>
                             <div style="font-size: 0.75rem; color: var(--text-secondary);">
                                 {{ formateur.specialite }}
                             </div>
                         </div>
+                        <a href="{{ url_for('formateur_profile', nom_prenom=formateur.nom_prenom) }}" class="action-btn view" title="عرض الملف">
+                            <i class="fa-solid fa-eye"></i>
+                        </a>
                     </li>
                     {% endfor %}
                 </ul>
             {% else %}
-                <p style="text-align: center; color: var(--text-secondary); font-size: 0.9rem; padding: 20px 0;">لا يوجد مكونون مسجلون.</p>
+                <p style="text-align: center; color: var(--text-secondary); font-size: 0.9rem; padding: 20px 0;">لا يوجد مكوّنون مسجلون.</p>
             {% endif %}
         </div>
         
         <!-- Quick Actions -->
-        <div class="quick-actions" style="border-top: 1px solid var(--border-color); padding-top: 20px;">
-            <h4 style="margin-bottom: 12px; font-size: 0.95rem; font-weight: 700;">عمليات سريعة</h4>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <a href="{{ url_for('list_cycles', action='new') }}" class="btn btn-primary" style="width: 100%; font-size: 0.85rem; padding: 10px 16px;">
+        <div style="border-top: 1px solid var(--border-color); padding-top: 16px;">
+            <h4 style="margin-bottom: 12px; font-size: 0.9rem; font-weight: 700; color: var(--text-secondary);">عمليات سريعة</h4>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <a href="{{ url_for('list_cycles') }}" class="btn btn-primary" style="width: 100%; font-size: 0.85rem;">
                     <i class="fa-solid fa-plus-circle"></i>
-                    إضافة دورة تكوينية جديدة
+                    إضافة دورة تكوينية
                 </a>
-                <a href="{{ url_for('list_formateurs', action='new') }}" class="btn btn-secondary" style="width: 100%; font-size: 0.85rem; padding: 10px 16px;">
+                <a href="{{ url_for('list_formateurs') }}" class="btn btn-secondary" style="width: 100%; font-size: 0.85rem;">
                     <i class="fa-solid fa-user-plus"></i>
                     إضافة مكوّن جديد
+                </a>
+                <a href="{{ url_for('analytics') }}" class="btn btn-info" style="width: 100%; font-size: 0.85rem;">
+                    <i class="fa-solid fa-chart-bar"></i>
+                    عرض التقارير
                 </a>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+// Countdown timer
+{% if next_cycle %}
+const targetDate = new Date('{{ next_cycle.date_deb }}');
+const today = new Date();
+const diff = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
+document.getElementById('daysCountdown').textContent = diff > 0 ? diff : 0;
+{% endif %}
+
+// Load charts from API
+async function loadCharts() {
+    try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        renderMonthlyChart(data.monthly);
+        renderStatusChart(data.status);
+    } catch(e) {
+        console.error('Chart load error:', e);
+    }
+}
+
+function renderMonthlyChart(monthly) {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+    const textColor = isDark ? '#9ca3af' : '#64748b';
+    
+    const labels = monthly.map(m => {
+        const [y, mo] = m.month.split('-');
+        const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+        return months[parseInt(mo)-1] + ' ' + y;
+    });
+    const values = monthly.map(m => m.count);
+    
+    const ctx = document.getElementById('monthlyChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'عدد الدورات',
+                data: values,
+                backgroundColor: 'rgba(37, 99, 235, 0.7)',
+                borderColor: '#2563eb',
+                borderWidth: 2,
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { color: gridColor }, ticks: { color: textColor, font: { family: 'Cairo' } } },
+                y: { grid: { color: gridColor }, ticks: { color: textColor, font: { family: 'Cairo' }, stepSize: 1 }, beginAtZero: true }
+            }
+        }
+    });
+}
+
+function renderStatusChart(status) {
+    const ctx = document.getElementById('statusChart').getContext('2d');
+    const data = [status.active || 0, status.upcoming || 0, status.past || 0];
+    const labels = ['مستمرة', 'قادمة', 'منتهية'];
+    const colors = ['#10b981', '#06b6d4', '#6b7280'];
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{ data, backgroundColor: colors, borderWidth: 3, borderColor: 'transparent', hoverOffset: 8 }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw} دورة` } }
+            }
+        }
+    });
+    
+    // Custom legend
+    const legend = document.getElementById('statusLegend');
+    if (legend) {
+        legend.innerHTML = labels.map((l, i) => `
+            <div style="display:inline-flex; align-items:center; gap:6px; margin-left:16px; font-size:0.82rem; color:var(--text-secondary);">
+                <span style="width:10px;height:10px;border-radius:50%;background:${colors[i]};display:inline-block;"></span>
+                ${l} (${data[i]})
+            </div>
+        `).join('');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadCharts);
+</script>
 {% endblock %}
